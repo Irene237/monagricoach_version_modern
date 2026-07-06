@@ -4,39 +4,42 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\Utilisateur; // Importation indispensable du modèle
+use App\Models\Utilisateur;
+use Illuminate\Support\Facades\Hash; // Importation nécessaire pour Hash::check
 
 class AuthController extends Controller
 {
-    public function register(Request $request)
+    // ... votre fonction register existante reste ici ...
+
+    public function login(Request $request)
     {
-        // 1. Validation des données
-        $validated = $request->validate([
-            'email' => 'required|email|unique:utilisateur,email',
-            'mot_de_passe' => 'required|min:4',
-            'nom' => 'required',
-            'prenom' => 'required',
-            'telephone' => 'required', // J'ai ajouté required car c'est important pour vous
-            'type_utilisateur' => 'required|in:agriculteur,conseiller_agricole',
+        // 1. Validation
+        $credentials = $request->validate([
+            'email' => 'required|email',
+            'mot_de_passe' => 'required',
         ]);
 
-        // 2. Création de l'utilisateur
-        // Laravel remplira automatiquement created_at et updated_at grâce aux timestamps
-        $utilisateur = Utilisateur::create([
-            'email' => $validated['email'],
-            'mot_de_passe' => bcrypt($validated['mot_de_passe']),
-            'nom' => $validated['nom'],
-            'prenom' => $validated['prenom'],
-            'telephone' => $validated['telephone'],
-            'pays' => $request->pays ?? 'Cameroun',
-            'date_inscription' => now(), // Gardé pour votre besoin métier spécifique
-            'type_utilisateur' => $validated['type_utilisateur'],
-        ]);
+        // 2. Recherche de l'utilisateur
+        $user = Utilisateur::where('email', $credentials['email'])->first();
 
-        // 3. Réponse JSON
+        // 3. Vérification du mot de passe haché
+        // Note : Hash::check est la méthode standard pour comparer avec bcrypt
+        if (!$user || !Hash::check($credentials['mot_de_passe'], $user->mot_de_passe)) {
+            return response()->json(['message' => 'Identifiants invalides'], 401);
+        }
+
+        // 4. Génération du token (nécessite Laravel Sanctum)
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        // 5. Réponse avec le rôle pour la redirection front-end
         return response()->json([
-            'message' => 'Inscription réussie', 
-            'data' => $utilisateur
-        ], 201);
+            'message' => 'Connexion réussie',
+            'token' => $token,
+            'role' => $user->type_utilisateur,
+            'user' => [
+                'nom' => $user->nom,
+                'prenom' => $user->prenom
+            ]
+        ]);
     }
 }

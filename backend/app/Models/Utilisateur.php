@@ -3,13 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Laravel\Sanctum\HasApiTokens; // <--- 1. Importez ceci
 
 class Utilisateur extends Model
 {
-    protected $table = 'utilisateur';
+    use HasApiTokens; // <--- 2. Ajoutez ceci ici
 
-    // Laravel active automatiquement les timestamps (created_at et updated_at) 
-    // par défaut, donc on n'a plus besoin de "public $timestamps = false;"
+    protected $table = 'utilisateur';
 
     protected $fillable = [
         'email', 
